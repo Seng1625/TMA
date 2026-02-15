@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prototype — 15 questions</title>
+  <style>
+:root{
+  --bg:#0b1020; --text:#e9ecf5; --muted:#a9b2d0; --border:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background:radial-gradient(1200px 700px at 20% 0%, rgba(122,162,255,.25), transparent 55%),
+            radial-gradient(1200px 700px at 90% 10%, rgba(104,224,194,.18), transparent 55%),
+            var(--bg); color:var(--text)}
+.app{max-width:980px;margin:0 auto;padding:18px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 0 18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.brand{font-weight:850}
+.meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:13px;color:var(--muted);background:rgba(255,255,255,.03)}
+.screen{display:none}.screen.active{display:block}
+.card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:14px;margin:14px 0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.btn{padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);
+  color:var(--text);cursor:pointer;font-weight:850;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.primary{background:linear-gradient(135deg, rgba(122,162,255,.22), rgba(104,224,194,.15));border-color:rgba(122,162,255,.28)}
+.btn.secondary{background:rgba(255,255,255,.03)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+input{background:rgba(0,0,0,.25);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;outline:none}
+.canvasWrap{border-radius:16px;overflow:hidden;border:1px solid var(--border);background:rgba(0,0,0,.25)}
+canvas{width:100%;height:auto;display:block}
+.options{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+.optionBtn{flex:1 1 240px;padding:14px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.03);cursor:pointer;font-weight:900;text-align:center}
+.optionBtn:hover{border-color:rgba(122,162,255,.35)}
+.optionBtn.selected{border-color:rgba(104,224,194,.55);box-shadow:0 0 0 3px rgba(104,224,194,.12) inset}
+.muted{color:var(--muted)} .small{font-size:13px}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;color:var(--muted);font-size:14px}
+hr.sep{border:0;border-top:1px solid var(--border);margin:14px 0}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}.summary{grid-template-columns:1fr}}
+
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">Prototype — Influence IA (15 questions)</div>
+      <div class="meta">
+        <span id="participantTag" class="pill"></span>
+        <span id="progressTag" class="pill"></span>
+      </div>
+    </header>
+
+    <section id="screen-menu" class="screen">
+      <h1>Démo (15 questions)</h1>
+      <p class="muted">Série de 15 questions (types variés), avis IA, puis export Excel à la fin.</p>
+      <div class="card">
+        <div class="actions">
+          <button class="btn primary" data-start="1">Démarrer la démo (15 questions)</button>
+          <a class="btn secondary" href="/?autostart=1">Démarrer direct (autostart)</a>
+        </div>
+        <hr class="sep"/>
+        <p class="muted small">
+          Les stimuli sont volontairement subtils (pas trop obvious). Tu peux ajuster la durée et l’exactitude IA.
+        </p>
+      </div>
+    </section>
+
+    <section id="screen-intro" class="screen">
+      <h1>Réglages</h1>
+      <p class="muted">Chaque question : stimulus court → réponse 1 → avis IA (%) → décision finale.</p>
+      <div class="card">
+        <div class="grid2">
+          <label>Durée stimulus (ms)
+            <input id="stimulusMs" type="number" min="800" step="100" value="1600">
+          </label>
+          <label>Exactitude IA (0–1)
+            <input id="aiAccuracy" type="number" min="0" max="1" step="0.05" value="0.75">
+          </label>
+          <label>Pause entre questions (ms)
+            <input id="itiMs" type="number" min="0" step="50" value="250">
+          </label>
+          <label>Nombre de questions
+            <input type="number" value="15" disabled>
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btnStart" class="btn primary">Lancer (15 questions)</button>
+        <a class="btn secondary" href="/">Retour menu</a>
+      </div>
+    </section>
+
+    <section id="screen-stimulus" class="screen">
+      <h2 id="stimulusTitle">Stimulus</h2>
+      <div class="canvasWrap">
+        <canvas id="stimulusCanvas" width="900" height="520"></canvas>
+      </div>
+      <p class="muted">Regarde bien. La question arrive juste après.</p>
+    </section>
+
+    <section id="screen-q1" class="screen">
+      <h2>Question</h2>
+      <p id="q1Text" class="question"></p>
+      <div id="q1Options" class="options"></div>
+      <p class="muted small">Réponds même si tu n’es pas sûr.</p>
+    </section>
+
+    <section id="screen-advice" class="screen">
+      <h2>Avis de l’IA</h2>
+      <div class="card">
+        <p id="aiText" class="aiText"></p>
+        <p class="muted small">(Prototype : IA simulée, confiance en %.)</p>
+      </div>
+      <div class="actions">
+        <button id="btnContinueToQ2" class="btn primary">Continuer</button>
+      </div>
+    </section>
+
+    <section id="screen-q2" class="screen">
+      <h2>Décision finale</h2>
+      <p id="q2Text" class="question"></p>
+      <div id="q2Options" class="options"></div>
+      <p class="muted small">Tu peux garder ou changer.</p>
+    </section>
+
+    <section id="screen-end" class="screen">
+      <h2>Terminé ✅</h2>
+      <div class="card">
+        <h3>Résumé</h3>
+        <div id="summary" class="summary"></div>
+        <hr class="sep"/>
+        <p id="saveStatus" class="muted small"></p>
+        <div class="actions">
+          <button id="btnSaveExcel" class="btn">Sauvegarder Excel</button>
+          <a id="btnDownloadExcel" class="btn primary" style="display:none" href="#">Télécharger Excel (.xlsx)</a>
+          <a class="btn secondary" href="/">Menu</a>
+        </div>
+        <p class="muted small">
+          Le fichier Excel est aussi enregistré dans le dossier <code>data</code> du projet.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+(() => {
+const $ = (s)=>document.querySelector(s);
+
+const SCREENS = {
+  menu: $("#screen-menu"),
+  intro: $("#screen-intro"),
+  stimulus: $("#screen-stimulus"),
+  q1: $("#screen-q1"),
+  advice: $("#screen-advice"),
+  q2: $("#screen-q2"),
+  end: $("#screen-end"),
+};
+
+const canvas = $("#stimulusCanvas");
+const ctx = canvas.getContext("2d");
+
+const participantTag = $("#participantTag");
+const progressTag = $("#progressTag");
+
+const btnStart = $("#btnStart");
+const btnContinueToQ2 = $("#btnContinueToQ2");
+const btnSaveExcel = $("#btnSaveExcel");
+const btnDownloadExcel = $("#btnDownloadExcel");
+
+const stimulusTitle = $("#stimulusTitle");
+const q1Text = $("#q1Text");
+const q2Text = $("#q2Text");
+const q1Options = $("#q1Options");
+const q2Options = $("#q2Options");
+const aiText = $("#aiText");
+const summaryEl = $("#summary");
+const saveStatus = $("#saveStatus");
+
+const inputStimulusMs = $("#stimulusMs");
+const inputAiAccuracy = $("#aiAccuracy");
+const inputItiMs = $("#itiMs");
+
+let CONFIG = { stimulusDurationMs:1600, aiAccuracy:0.75, itiMs:250, totalTrials:15 };
+
+let participantId="", sessionStartedAt="";
+let trials=[], trialIndex=0, results=[];
+let rafId=null, stimulusStart=0, currentStopper=null;
+let lastSaved = null;
+
+const TASK_LABELS = {
+  dot_motion: "Nuage de points (mouvement)",
+  line_trend: "Courbe bruitée (tendance)",
+  bar_compare: "Barres (moyenne subtile)",
+  dot_count: "Quantité de points",
+  ebb_illusion: "Illusion (taille)",
+  orient_bias: "Orientation (lignes)",
+  color_majority: "Majorité de couleur",
+  rotation: "Rotation (sens)",
+  corr_sign: "Corrélation (signe)",
+  hist_skew: "Histogramme (asymétrie)",
+};
+
+function showScreen(name){
+  Object.values(SCREENS).forEach(s=>s.classList.remove("active"));
+  SCREENS[name].classList.add("active");
+}
+
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function nowISO(){ return new Date().toISOString(); }
+function msSince(t0){ return Math.max(0, performance.now()-t0); }
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+
+// Gaussian
+function randn(){
+  let u=0, v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+}
+
+function parseQuery(){
+  const qs = new URLSearchParams(location.search);
+  return {
+    autostart: qs.get("autostart")==="1",
+    ms: qs.get("ms"),
+    acc: qs.get("acc"),
+    iti: qs.get("iti"),
+  };
+}
+const QUERY = parseQuery();
+
+function applyQueryDefaults(){
+  if(QUERY.ms) inputStimulusMs.value = String(parseInt(QUERY.ms,10) || inputStimulusMs.value);
+  if(QUERY.acc) inputAiAccuracy.value = String(parseFloat(QUERY.acc) || inputAiAccuracy.value);
+  if(QUERY.iti) inputItiMs.value = String(parseInt(QUERY.iti,10) || inputItiMs.value);
+}
+
+function setProgress(){
+  progressTag.textContent = `Question ${Math.min(trialIndex+1,trials.length)} / ${trials.length}`;
+}
+
+function resetCanvas(){ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height); }
+
+function drawFrameBg(){
+  ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=2; ctx.strokeRect(16,16,canvas.width-32,canvas.height-32);
+  ctx.strokeStyle="rgba(255,255,255,0.05)"; ctx.beginPath();
+  ctx.moveTo(canvas.width/2,24); ctx.lineTo(canvas.width/2,canvas.height-24); ctx.stroke();
+}
+
+function buildConfidenceSchedule(n){
+  const levels = [55,65,75,85,95];
+  const out = [];
+  while(out.length < n){
+    for(const lv of levels) out.push(lv);
+  }
+  return shuffle(out.slice(0,n));
+}
+
+function aiForTrial(correct, options, forcedConfidence){
+  const isCorrect = Math.random() < CONFIG.aiAccuracy;
+  let suggestion = correct;
+  if(!isCorrect) suggestion = options.find(o=>o!==correct) || correct;
+  const confidence = forcedConfidence ?? choice([55,65,75,85,95]);
+  return {suggestion, confidence, isCorrect};
+}
+
+/* TRIAL FACTORY */
+function makeTrial(type, rep, conf){
+  if(type === "dot_motion") return makeDotMotionTrial(rep, conf);
+  if(type === "line_trend") return makeLineTrendTrial(rep, conf);
+  if(type === "bar_compare") return makeBarCompareTrial(rep, conf);
+  if(type === "dot_count") return makeDotCountTrial(rep, conf);
+  if(type === "ebb_illusion") return makeEbbinghausTrial(rep, conf);
+  if(type === "orient_bias") return makeOrientBiasTrial(rep, conf);
+  if(type === "color_majority") return makeColorMajorityTrial(rep, conf);
+  if(type === "rotation") return makeRotationTrial(rep, conf);
+  if(type === "corr_sign") return makeCorrSignTrial(rep, conf);
+  if(type === "hist_skew") return makeHistSkewTrial(rep, conf);
+  return makeBarCompareTrial(rep, conf);
+}
+
+function buildDemo15Trials(){
+  const plan = [
+    "bar_compare","dot_motion","orient_bias","line_trend","color_majority",
+    "dot_count","corr_sign","bar_compare","rotation","hist_skew",
+    "line_trend","orient_bias","ebb_illusion","color_majority","dot_count",
+  ];
+  const conf = buildConfidenceSchedule(plan.length);
+  const counts = {};
+  const out = [];
+  for(let i=0;i<plan.length;i++){
+    const t = plan[i];
+    counts[t] = (counts[t]||0) + 1;
+    out.push(makeTrial(t, counts[t], conf[i]));
+  }
+  return out;
+}
+
+/* TRIALS */
+function makeDotMotionTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const drift = correct==="Gauche"?-1:1;
+  const driftStrength = 0.08 + Math.random()*0.12;
+  const jitter = 0.95 + Math.random()*0.55;
+  const options=["Gauche","Droite"];
+  return { id:`dotMotion_${rep}_${randInt(1000,9999)}`, type:"dot_motion", title:TASK_LABELS.dot_motion,
+    prompt:"Dans quel sens le nuage allait-il globalement ?", options, correct,
+    stimulus:{drift, driftStrength, jitter, n:240}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeLineTrendTrial(rep, conf){
+  const correct = Math.random()<0.5?"Monte":"Descend";
+  const slope = correct==="Monte"?1:-1;
+  const options=["Monte","Descend"];
+  const slopeStrength = 0.22 + Math.random()*0.22;
+  const noise = 3.2 + Math.random()*1.8;
+  return { id:`lineTrend_${rep}_${randInt(1000,9999)}`, type:"line_trend", title:TASK_LABELS.line_trend,
+    prompt:"La courbe avait-elle plutôt tendance à monter ou à descendre ?", options, correct,
+    stimulus:{slope, slopeStrength, noise}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeBarCompareTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const options=["Gauche","Droite"];
+  const baseMean=0.48+Math.random()*0.14;
+  const delta=0.015+Math.random()*0.02;
+  const leftMean = correct==="Gauche"?baseMean+delta:baseMean;
+  const rightMean = correct==="Droite"?baseMean+delta:baseMean;
+  return { id:`barCompare_${rep}_${randInt(1000,9999)}`, type:"bar_compare", title:TASK_LABELS.bar_compare,
+    prompt:"Quel côté a une moyenne de barres légèrement plus haute ?", options, correct,
+    stimulus:{leftMean,rightMean,spread:0.16,barsPerSide:8}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeDotCountTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const options=["Gauche","Droite"];
+  const base = randInt(52, 70);
+  const diff = randInt(1, 3);
+  const leftCount = correct==="Gauche"?base+diff:base;
+  const rightCount = correct==="Droite"?base+diff:base;
+  return { id:`dotCount_${rep}_${randInt(1000,9999)}`, type:"dot_count", title:TASK_LABELS.dot_count,
+    prompt:"Où y avait-il légèrement plus de points ?", options, correct,
+    stimulus:{leftCount,rightCount}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeEbbinghausTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const options=["Gauche","Droite"];
+  const baseR = 34 + randInt(-1,1);
+  const delta = randInt(1,3);
+  const leftR = correct==="Gauche"?baseR+delta:baseR;
+  const rightR = correct==="Droite"?baseR+delta:baseR;
+  return { id:`ebb_${rep}_${randInt(1000,9999)}`, type:"ebb_illusion", title:TASK_LABELS.ebb_illusion,
+    prompt:"Quel cercle central était le plus grand ?", options, correct,
+    stimulus:{leftR,rightR}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeOrientBiasTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const bias = correct==="Gauche"?-18:+18;
+  const options=["Gauche","Droite"];
+  return { id:`orientBias_${rep}_${randInt(1000,9999)}`, type:"orient_bias", title:TASK_LABELS.orient_bias,
+    prompt:"Les lignes étaient globalement inclinées vers la gauche ou vers la droite ?", options, correct,
+    stimulus:{biasDeg:bias, sdDeg:40, n:140, len:18}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeColorMajorityTrial(rep, conf){
+  const correct = Math.random()<0.5?"Bleu":"Vert";
+  const options=["Bleu","Vert"];
+  const total = 200;
+  const pMajor = 0.52 + Math.random()*0.04;
+  const nMajor = Math.round(total * pMajor);
+  const nBlue = correct==="Bleu"?nMajor:(total-nMajor);
+  const nGreen = correct==="Vert"?nMajor:(total-nMajor);
+  return { id:`colorMaj_${rep}_${randInt(1000,9999)}`, type:"color_majority", title:TASK_LABELS.color_majority,
+    prompt:"Quelle couleur était légèrement majoritaire ?", options, correct,
+    stimulus:{nBlue, nGreen}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeRotationTrial(rep, conf){
+  const correct = Math.random()<0.5?"Horaire":"Anti-horaire";
+  const dir = correct==="Horaire"?1:-1;
+  const options=["Horaire","Anti-horaire"];
+  return { id:`rotation_${rep}_${randInt(1000,9999)}`, type:"rotation", title:TASK_LABELS.rotation,
+    prompt:"Le mouvement global semblait-il tourner dans quel sens ?", options, correct,
+    stimulus:{dir, n:140, omega:0.0009 + Math.random()*0.0007, noise:0.9}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeCorrSignTrial(rep, conf){
+  const correct = Math.random()<0.5?"Positive":"Négative";
+  const sign = correct==="Positive"?1:-1;
+  const options=["Positive","Négative"];
+  return { id:`corr_${rep}_${randInt(1000,9999)}`, type:"corr_sign", title:TASK_LABELS.corr_sign,
+    prompt:"La relation entre X et Y semblait plutôt…", options, correct,
+    stimulus:{sign, slope:0.18+Math.random()*0.18, noise:0.55+Math.random()*0.25, n:120}, ai: aiForTrial(correct, options, conf) };
+}
+
+function makeHistSkewTrial(rep, conf){
+  const correct = Math.random()<0.5?"Gauche":"Droite";
+  const skew = correct==="Gauche"?-1:+1;
+  const options=["Gauche","Droite"];
+  return { id:`hist_${rep}_${randInt(1000,9999)}`, type:"hist_skew", title:TASK_LABELS.hist_skew,
+    prompt:"La distribution avait une “queue” plus longue vers…", options, correct,
+    stimulus:{skew, bins:11, strength:0.35+Math.random()*0.25}, ai: aiForTrial(correct, options, conf) };
+}
+
+/* RENDERERS */
+function startStimulus(trial, onDone){
+  resetCanvas(); stimulusStart = performance.now();
+  if(currentStopper){ try{currentStopper()}catch{} currentStopper=null; }
+
+  const drawFn =
+    trial.type==="dot_motion"?makeDotMotionRenderer(trial.stimulus) :
+    trial.type==="line_trend"?makeLineTrendRenderer(trial.stimulus) :
+    trial.type==="bar_compare"?makeBarCompareRenderer(trial.stimulus) :
+    trial.type==="dot_count"?makeDotCountRenderer(trial.stimulus) :
+    trial.type==="ebb_illusion"?makeEbbinghausRenderer(trial.stimulus) :
+    trial.type==="orient_bias"?makeOrientBiasRenderer(trial.stimulus) :
+    trial.type==="color_majority"?makeColorMajorityRenderer(trial.stimulus) :
+    trial.type==="rotation"?makeRotationRenderer(trial.stimulus) :
+    trial.type==="corr_sign"?makeCorrRenderer(trial.stimulus) :
+    makeHistRenderer(trial.stimulus);
+
+  let stopped=false;
+  function loop(){
+    if(stopped) return;
+    const t=performance.now(), elapsed=t-stimulusStart;
+    drawFrameBg(); drawFn(elapsed);
+    if(elapsed>=CONFIG.stimulusDurationMs){
+      stopped=true; if(rafId) cancelAnimationFrame(rafId); rafId=null; onDone(); return;
+    }
+    rafId=requestAnimationFrame(loop);
+  }
+  currentStopper=()=>{stopped=true; if(rafId) cancelAnimationFrame(rafId); rafId=null;};
+  loop();
+}
+
+function makeDotMotionRenderer(p){
+  const {drift,driftStrength,jitter,n}=p, pad=30, w=canvas.width,h=canvas.height;
+  const pts=Array.from({length:n},()=>({x:randInt(pad,w-pad),y:randInt(pad,h-pad),vx:(Math.random()-0.5)*0.7,vy:(Math.random()-0.5)*0.7}));
+  return () => {
+    for(const pt of pts){
+      pt.vx += (Math.random()-0.5)*jitter*0.10 + drift*driftStrength*0.02;
+      pt.vy += (Math.random()-0.5)*jitter*0.10;
+      pt.x += pt.vx + drift*driftStrength*1.0; pt.y += pt.vy;
+      if(pt.x<pad){pt.x=pad;pt.vx*=-0.6} if(pt.x>w-pad){pt.x=w-pad;pt.vx*=-0.6}
+      if(pt.y<pad){pt.y=pad;pt.vy*=-0.6} if(pt.y>h-pad){pt.y=h-pad;pt.vy*=-0.6}
+    }
+    ctx.fillStyle="rgba(122,162,255,0.78)";
+    for(const pt of pts){ ctx.beginPath(); ctx.arc(pt.x,pt.y,2,0,Math.PI*2); ctx.fill(); }
+  };
+}
+
+function makeLineTrendRenderer(p){
+  const {slope,slopeStrength,noise}=p, w=canvas.width,h=canvas.height,pad=60;
+  const pts=[]; let y=h/2;
+  for(let i=0;i<70;i++){
+    y += slope*slopeStrength + (Math.random()-0.5)*noise;
+    y=clamp(y,pad,h-pad);
+    pts.push({x:pad+(i/69)*(w-2*pad),y});
+  }
+  return (elapsed)=>{
+    ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.moveTo(pad,h-pad); ctx.lineTo(pad,pad); ctx.stroke();
+    const reveal=Math.min(1, elapsed/CONFIG.stimulusDurationMs), count=Math.max(2, Math.floor(pts.length*reveal));
+    ctx.strokeStyle="rgba(104,224,194,0.92)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<count;i++) ctx.lineTo(pts[i].x,pts[i].y); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,0.50)";
+    for(let i=0;i<count;i++){ ctx.beginPath(); ctx.arc(pts[i].x,pts[i].y,3,0,Math.PI*2); ctx.fill(); }
+  };
+}
+
+function makeBarCompareRenderer(p){
+  const {leftMean,rightMean,spread,barsPerSide}=p, w=canvas.width,h=canvas.height,pad=70;
+  const mk=(m)=>Array.from({length:barsPerSide},()=>clamp(m+(Math.random()-0.5)*spread, 0.08, 0.92));
+  const L=mk(leftMean), R=mk(rightMean);
+  return ()=>{
+    const mid=w/2, areaW=w-2*pad, sideW=areaW/2-30;
+    drawBars(pad,pad,sideW,h-2*pad,L,"Gauche"); drawBars(mid+30,pad,sideW,h-2*pad,R,"Droite");
+  };
+  function drawBars(x,y,ww,hh,bars,label){
+    ctx.fillStyle="rgba(255,255,255,0.65)"; ctx.font="16px system-ui"; ctx.fillText(label,x,y-18);
+    const gap=8, barW=(ww-gap*(bars.length-1))/bars.length;
+    for(let i=0;i<bars.length;i++){
+      const bh=bars[i]*hh, bx=x+i*(barW+gap), by=y+(hh-bh);
+      ctx.fillStyle="rgba(122,162,255,0.72)"; ctx.fillRect(bx,by,barW,bh);
+      ctx.strokeStyle="rgba(255,255,255,0.08)"; ctx.strokeRect(bx,by,barW,bh);
+    }
+  }
+}
+
+function makeDotCountRenderer(p){
+  const {leftCount,rightCount}=p, w=canvas.width,h=canvas.height,pad=40;
+  const leftBox={x:pad,y:pad,w:w/2-pad*1.5,h:h-2*pad}, rightBox={x:w/2+pad*0.5,y:pad,w:w/2-pad*1.5,h:h-2*pad};
+  const scatter=(box,n)=>Array.from({length:n},()=>({x:box.x+10+Math.random()*(box.w-20),y:box.y+10+Math.random()*(box.h-20),r:2+Math.random()*1.2}));
+  const L=scatter(leftBox,leftCount), R=scatter(rightBox,rightCount);
+  return ()=>{
+    ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=2;
+    ctx.strokeRect(leftBox.x,leftBox.y,leftBox.w,leftBox.h); ctx.strokeRect(rightBox.x,rightBox.y,rightBox.w,rightBox.h);
+    ctx.fillStyle="rgba(104,224,194,0.80)"; for(const pt of L){ctx.beginPath();ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle="rgba(122,162,255,0.80)"; for(const pt of R){ctx.beginPath();ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2);ctx.fill();}
+  };
+}
+
+function makeEbbinghausRenderer(p){
+  const {leftR,rightR}=p, w=canvas.width,h=canvas.height;
+  const leftC={x:w*0.32,y:h*0.52}, rightC={x:w*0.68,y:h*0.52};
+  return ()=>{
+    ctx.fillStyle="rgba(255,255,255,0.65)"; ctx.font="16px system-ui";
+    ctx.fillText("Gauche", w*0.25, 70); ctx.fillText("Droite", w*0.62, 70);
+    drawRing(leftC,leftR,12,28,7); drawRing(rightC,rightR,12,14,10);
+    drawCenter(leftC,leftR); drawCenter(rightC,rightR);
+  };
+  function drawRing(c,centerR,n,aroundR){
+    const radius=centerR+40+aroundR;
+    ctx.fillStyle="rgba(122,162,255,0.25)";
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2; const x=c.x+Math.cos(a)*radius; const y=c.y+Math.sin(a)*radius;
+      ctx.beginPath(); ctx.arc(x,y,aroundR,0,Math.PI*2); ctx.fill();
+    }
+  }
+  function drawCenter(c,r){
+    ctx.fillStyle="rgba(104,224,194,0.75)"; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=2; ctx.stroke();
+  }
+}
+
+function makeOrientBiasRenderer(p){
+  const {biasDeg, sdDeg, n, len} = p;
+  const w=canvas.width, h=canvas.height, pad=40;
+  const segs = Array.from({length:n}, ()=> {
+    const angle = (biasDeg + randn()*sdDeg) * Math.PI/180;
+    return { x: pad + Math.random()*(w-2*pad), y: pad + Math.random()*(h-2*pad), a: angle };
+  });
+  return ()=> {
+    ctx.strokeStyle="rgba(255,255,255,0.55)";
+    ctx.lineWidth=2;
+    for(const s of segs){
+      const dx = Math.cos(s.a) * len;
+      const dy = Math.sin(s.a) * len;
+      ctx.beginPath();
+      ctx.moveTo(s.x - dx, s.y - dy);
+      ctx.lineTo(s.x + dx, s.y + dy);
+      ctx.stroke();
+    }
+  };
+}
+
+function makeColorMajorityRenderer(p){
+  const {nBlue, nGreen} = p;
+  const w=canvas.width, h=canvas.height, pad=30;
+  const dots = [];
+  for(let i=0;i<nBlue;i++){
+    dots.push({x: pad+Math.random()*(w-2*pad), y: pad+Math.random()*(h-2*pad), c:"rgba(122,162,255,0.85)"});
+  }
+  for(let i=0;i<nGreen;i++){
+    dots.push({x: pad+Math.random()*(w-2*pad), y: pad+Math.random()*(h-2*pad), c:"rgba(104,224,194,0.85)"});
+  }
+  shuffle(dots);
+  return ()=> {
+    for(const d of dots){
+      ctx.fillStyle=d.c;
+      ctx.beginPath(); ctx.arc(d.x,d.y,2.3,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle="rgba(255,255,255,0.50)";
+    ctx.font="14px system-ui";
+    ctx.fillText("Bleu vs Vert", 30, 40);
+  };
+}
+
+function makeRotationRenderer(p){
+  const {dir, n, omega, noise} = p;
+  const w=canvas.width, h=canvas.height;
+  const center={x:w/2,y:h/2};
+  const baseR = Math.min(w,h)*0.28;
+  const dots = Array.from({length:n}, (_,i)=> {
+    const a = (i/n)*Math.PI*2 + Math.random()*0.15;
+    const r = baseR + randn()*18;
+    return {a, r, phase: Math.random()*Math.PI*2};
+  });
+  return (elapsed)=> {
+    const t = elapsed;
+    ctx.fillStyle="rgba(255,255,255,0.45)";
+    ctx.font="14px system-ui";
+    ctx.fillText("Rotation subtile", 30, 40);
+    for(const d of dots){
+      const a = d.a + dir * (t*omega) + Math.sin(d.phase + t*0.002)*0.02;
+      const r = d.r + randn()*noise;
+      const x = center.x + Math.cos(a)*r;
+      const y = center.y + Math.sin(a)*r;
+      ctx.fillStyle="rgba(122,162,255,0.78)";
+      ctx.beginPath(); ctx.arc(x,y,2.2,0,Math.PI*2); ctx.fill();
+    }
+  };
+}
+
+function makeCorrRenderer(p){
+  const {sign, slope, noise, n} = p;
+  const w=canvas.width, h=canvas.height, pad=70;
+  const pts = Array.from({length:n}, ()=> {
+    const x = Math.random()*1.0;
+    const y = clamp(0.5 + sign*(x-0.5)*slope + randn()*noise*0.18, 0, 1);
+    return {x,y};
+  });
+  return ()=> {
+    ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.moveTo(pad,h-pad); ctx.lineTo(pad,pad); ctx.stroke();
+    for(const p of pts){
+      const X = pad + p.x*(w-2*pad);
+      const Y = (h-pad) - p.y*(h-2*pad);
+      ctx.fillStyle="rgba(104,224,194,0.75)";
+      ctx.beginPath(); ctx.arc(X,Y,2.7,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle="rgba(255,255,255,0.50)";
+    ctx.font="14px system-ui";
+    ctx.fillText("X vs Y", 30, 40);
+  };
+}
+
+function makeHistRenderer(p){
+  const {skew, bins, strength} = p;
+  const w=canvas.width, h=canvas.height, pad=70;
+  const n = bins;
+  const counts = [];
+  for(let i=0;i<n;i++){
+    const x = (i/(n-1))*2 - 1;
+    const base = 0.70 - Math.abs(x)*0.25;
+    const skewTerm = skew * x * strength;
+    const v = clamp(base + skewTerm + (Math.random()-0.5)*0.06, 0.12, 0.95);
+    counts.push(v);
+  }
+  const maxV = Math.max(...counts);
+  return ()=> {
+    ctx.strokeStyle="rgba(255,255,255,0.10)"; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(pad,h-pad); ctx.lineTo(w-pad,h-pad); ctx.moveTo(pad,h-pad); ctx.lineTo(pad,pad); ctx.stroke();
+    const barW = (w-2*pad)/n * 0.82;
+    const gap = ((w-2*pad) - barW*n)/(n-1);
+    for(let i=0;i<n;i++){
+      const v = counts[i]/maxV;
+      const bh = v*(h-2*pad);
+      const x = pad + i*(barW+gap);
+      const y = (h-pad) - bh;
+      ctx.fillStyle="rgba(122,162,255,0.70)";
+      ctx.fillRect(x,y,barW,bh);
+    }
+    ctx.fillStyle="rgba(255,255,255,0.50)";
+    ctx.font="14px system-ui";
+    ctx.fillText("Histogramme", 30, 40);
+  };
+}
+
+/* UI + FLOW */
+function renderOptions(container, options, onPick, pre=null){
+  container.innerHTML="";
+  options.forEach(opt=>{
+    const b=document.createElement("button");
+    b.className="optionBtn"+(pre===opt?" selected":"");
+    b.textContent=opt;
+    b.onclick=()=>onPick(opt);
+    container.appendChild(b);
+  });
+}
+
+function computeSummary(){
+  const n=results.length; if(!n) return null;
+  const changed=results.filter(r=>r.changed).length;
+  const followInit=results.filter(r=>r.followedAI_initial).length;
+  const followFinal=results.filter(r=>r.followedAI_final).length;
+  const initAcc=results.filter(r=>r.initialCorrect).length;
+  const finalAcc=results.filter(r=>r.finalCorrect).length;
+  const meanInitRT=Math.round(results.reduce((a,r)=>a+r.initialRTms,0)/n);
+  const meanFinalRT=Math.round(results.reduce((a,r)=>a+r.finalRTms,0)/n);
+  return {n,changedPct:Math.round(100*changed/n),followInitPct:Math.round(100*followInit/n),followFinalPct:Math.round(100*followFinal/n),
+          initAccPct:Math.round(100*initAcc/n),finalAccPct:Math.round(100*finalAcc/n),meanInitRT,meanFinalRT};
+}
+
+function renderSummary(){
+  const s=computeSummary(); if(!s){ summaryEl.textContent=""; return; }
+  summaryEl.innerHTML = `
+    <div><strong>Questions</strong><br>${s.n}</div>
+    <div><strong>% changements</strong><br>${s.changedPct}%</div>
+    <div><strong>% suit IA (avant)</strong><br>${s.followInitPct}%</div>
+    <div><strong>% suit IA (après)</strong><br>${s.followFinalPct}%</div>
+    <div><strong>Exactitude (avant)</strong><br>${s.initAccPct}%</div>
+    <div><strong>Exactitude (après)</strong><br>${s.finalAccPct}%</div>
+    <div><strong>RT moyen (avant)</strong><br>${s.meanInitRT} ms</div>
+    <div><strong>RT moyen (après)</strong><br>${s.meanFinalRT} ms</div>`;
+}
+
+function startSession(){
+  CONFIG.stimulusDurationMs = Math.max(800, parseInt(inputStimulusMs.value,10) || 1600);
+  CONFIG.aiAccuracy = clamp(parseFloat(inputAiAccuracy.value) || 0.75, 0, 1);
+  CONFIG.itiMs = Math.max(0, parseInt(inputItiMs.value,10) || 250);
+
+  participantId = `P${randInt(10000,99999)}`;
+  sessionStartedAt = nowISO();
+  participantTag.textContent = participantId;
+
+  trials = buildDemo15Trials();
+  trialIndex = 0;
+  results = [];
+  progressTag.textContent = `Question 1 / ${trials.length}`;
+  saveStatus.textContent = "";
+  lastSaved = null;
+
+  nextTrial();
+}
+
+function nextTrial(){
+  if(trialIndex >= trials.length){
+    setProgress(); renderSummary(); showScreen("end");
+    autoSaveExcel();
+    return;
+  }
+  const trial=trials[trialIndex]; setProgress();
+  stimulusTitle.textContent = `${trial.title}`;
+  showScreen("stimulus");
+  startStimulus(trial, ()=> setTimeout(()=>askQ1(trial), CONFIG.itiMs));
+}
+
+function askQ1(trial){
+  showScreen("q1"); q1Text.textContent = trial.prompt;
+  const t0=performance.now();
+  renderOptions(q1Options, trial.options, (pick)=>{
+    trial._initial={choice:pick, rt:msSince(t0)};
+    showAdvice(trial);
+  });
+}
+
+function showAdvice(trial){
+  showScreen("advice");
+  aiText.textContent = `L’IA prédit : « ${trial.ai.suggestion} » avec ${trial.ai.confidence}% de confiance.`;
+  btnContinueToQ2.onclick = ()=>askQ2(trial);
+}
+
+function askQ2(trial){
+  showScreen("q2");
+  q2Text.textContent = `Décision finale — ${trial.prompt}`;
+  const pre=trial._initial.choice, t0=performance.now();
+  renderOptions(q2Options, trial.options, (pick)=>{
+    const row={
+      participantId, sessionStartedAt,
+      trialIndex: trialIndex+1, trialId: trial.id,
+      type: trial.type, title: trial.title, prompt: trial.prompt,
+      options: trial.options, correct: trial.correct,
+      aiSuggestion: trial.ai.suggestion, aiConfidence: trial.ai.confidence, aiIsCorrect: trial.ai.isCorrect,
+      initialChoice: pre, initialRTms: Math.round(trial._initial.rt),
+      initialCorrect: pre===trial.correct, followedAI_initial: pre===trial.ai.suggestion,
+      finalChoice: pick, finalRTms: Math.round(msSince(t0)),
+      finalCorrect: pick===trial.correct, followedAI_final: pick===trial.ai.suggestion,
+      changed: pre!==pick, stimulusParams: trial.stimulus, timestamp: nowISO(),
+    };
+    results.push(row);
+    trialIndex += 1;
+    setTimeout(nextTrial, CONFIG.itiMs);
+  }, pre);
+}
+
+async function autoSaveExcel(){
+  try{
+    saveStatus.textContent = "Sauvegarde Excel…";
+    const resp = await fetch("/api/save", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ participantId, sessionStartedAt, results }),
+    });
+    const data = await resp.json();
+    if(!data.ok) throw new Error("save failed");
+    lastSaved = data;
+    saveStatus.textContent = `✅ Excel sauvegardé dans le dossier "data" + prêt à télécharger: ${data.filename}`;
+    btnDownloadExcel.href = data.download_url;
+    btnDownloadExcel.style.display = "inline-flex";
+  }catch(e){
+    console.error(e);
+    saveStatus.textContent = "⚠️ Impossible de sauvegarder l'Excel (regarde la console PyCharm).";
+  }
+}
+
+btnStart.addEventListener("click", startSession);
+btnSaveExcel.addEventListener("click", autoSaveExcel);
+
+document.querySelectorAll("[data-start]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    showScreen("intro");
+    setTimeout(()=>startSession(), 80);
+  });
+});
+
+applyQueryDefaults();
+participantTag.textContent="";
+progressTag.textContent="";
+showScreen("menu");
+
+if(QUERY.autostart){
+  showScreen("intro");
+  setTimeout(()=>startSession(), 120);
+}
+})();
+  </script>
+</body>
+</html>
